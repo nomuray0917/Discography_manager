@@ -47,14 +47,3 @@
     * **テキスト書き出し**: 告知用の `.txt` ファイル（HTMLコード同梱）を生成します。
 
 ---
-
-## 📦 開発者向け情報
-
-ソースコードからビルドする場合や、リポジトリを管理する場合の情報です。
-
-### 依存関係
-* Python 3.x (標準ライブラリのみ)
-
-### exe化コマンド
-```bash
-pyinstaller --onefile --noconsole Discography_manager.py
