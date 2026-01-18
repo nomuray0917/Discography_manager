@@ -26,7 +26,7 @@ class DiscographyApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Discography Manager")
-        self.root.geometry("650x850") # 幅を少し広げる
+        self.root.geometry("700x900") # 縦横少し広げる
         
         # カラーパレットとフォント定義
         self.colors = {
@@ -35,6 +35,7 @@ class DiscographyApp:
             "primary": "#4a90e2",   # メインボタン色（青）
             "secondary": "#ffffff", # サブボタン色
             "text": "#333333",      # 文字色
+            "sub_text": "#888888",  # 補足文字色
             "accent": "#50c878",    # アクセント
             "danger": "#ff6b6b"     # 削除ボタンなど
         }
@@ -241,25 +242,29 @@ class DiscographyApp:
         except ValueError:
             pass
 
-    def add_track(self, initial_name="", initial_inst=False, refresh=True):
-        """トラック行を追加。refresh=Falseにすると追加後の再描画をスキップ（大量追加時の高速化用）"""
+    def add_track(self, initial_name="", initial_eng="", initial_inst=False, refresh=True):
+        """トラック行を追加。2段構成 (上: 日本語+操作 / 下: 英語)"""
         
-        # 行コンテナ
-        row = ttk.Frame(self.tracks_frame, style="Card.TFrame")
+        # 行全体のコンテナ (枠線などで区切りたい場合はここでreliefを設定)
+        row_container = ttk.Frame(self.tracks_frame, style="Card.TFrame")
         
+        # --- 1段目: 番号、日本語タイトル、Inst、操作ボタン ---
+        row1 = ttk.Frame(row_container, style="Card.TFrame")
+        row1.pack(fill="x", pady=(2, 0))
+
         # 1. 番号ラベル
-        lbl = ttk.Label(row, text=".", width=3, anchor="e", style="Card.TLabel", foreground="#888")
-        lbl.pack(side="left")
+        lbl = ttk.Label(row1, text=".", width=3, anchor="e", style="Card.TLabel", foreground="#888")
+        lbl.pack(side="left", pady=2)
         
-        # 2. 入力欄
-        entry = ttk.Entry(row)
-        entry.pack(side="left", fill="x", expand=True, ipady=3)
-        entry.insert(0, initial_name)
+        # 2. 日本語入力欄
+        entry_jp = ttk.Entry(row1)
+        entry_jp.pack(side="left", fill="x", expand=True, ipady=3)
+        entry_jp.insert(0, initial_name)
         
         # 3. Instチェック
         is_inst_var = tk.BooleanVar(value=initial_inst)
         chk = tk.Checkbutton(
-            row, text="Inst", variable=is_inst_var,
+            row1, text="Inst", variable=is_inst_var,
             bg=self.colors["card_bg"], fg="#666", 
             activebackground=self.colors["card_bg"],
             selectcolor="white", relief="flat"
@@ -267,36 +272,54 @@ class DiscographyApp:
         chk.pack(side="left", padx=5)
 
         # 4. 操作ボタン (上へ、下へ、削除)
-        btn_frame = ttk.Frame(row, style="Card.TFrame")
+        btn_frame = ttk.Frame(row1, style="Card.TFrame")
         btn_frame.pack(side="left", padx=(5, 0))
         
-        # 上へ
-        tk.Button(btn_frame, text="▲", command=lambda r=row: self.move_track(r, -1),
+        tk.Button(btn_frame, text="▲", command=lambda r=row_container: self.move_track(r, -1),
                   bg="#f0f0f0", relief="flat", font=self.fonts["small_btn"], width=2).pack(side="left", padx=1)
-        # 下へ
-        tk.Button(btn_frame, text="▼", command=lambda r=row: self.move_track(r, 1),
+        tk.Button(btn_frame, text="▼", command=lambda r=row_container: self.move_track(r, 1),
                   bg="#f0f0f0", relief="flat", font=self.fonts["small_btn"], width=2).pack(side="left", padx=1)
-        # 削除
-        tk.Button(btn_frame, text="✕", command=lambda r=row: self.delete_track(r),
+        tk.Button(btn_frame, text="✕", command=lambda r=row_container: self.delete_track(r),
                   bg="#fff0f0", fg=self.colors["danger"], relief="flat", font=self.fonts["small_btn"], width=2).pack(side="left", padx=(3, 0))
+
+        # --- 2段目: 英語タイトル (インデントあり) ---
+        row2 = ttk.Frame(row_container, style="Card.TFrame")
+        row2.pack(fill="x", pady=(0, 6)) # 下に少し余白
+        
+        # インデント用スペース（番号ラベル分空ける）
+        ttk.Label(row2, width=3, style="Card.TLabel").pack(side="left")
+        
+        # 英語入力欄
+        # プレースホルダー的に文字を入れるか、ラベルを置くか。シンプルにEntryのみにする。
+        # わかりやすくするために薄い文字でガイドを表示する実装もできるが、今回はシンプルに。
+        entry_en = ttk.Entry(row2)
+        entry_en.pack(side="left", fill="x", expand=True, ipady=3)
+        entry_en.insert(0, initial_eng)
+        
+        # 英語タイトル用のラベル（オプション、入力欄の中に薄く表示するのはtkでは面倒なので横に置くか検討したが、シンプルに）
+        # その代わり、ツールチップ風に初期値として薄く入れておく手もあるが、今回はコンテキストメニューなどで対応。
+        # 入力欄の背景色を変えるなどして区別してもいいが、デザイン統一のためそのまま。
+        # ユーザーへのヒントとして、2行目のEntryの右側に "English" ラベルを置く
+        ttk.Label(row2, text="English Title", style="Card.TLabel", foreground=self.colors["sub_text"], font=("Helvetica", 8)).pack(side="right", padx=(5, 75)) # ボタンの幅分くらい余白調整
+
 
         # 管理リストに追加
         self.track_entries.append({
-            "row": row,
+            "row": row_container,
             "label": lbl,
-            "entry": entry,
+            "entry_jp": entry_jp,
+            "entry_en": entry_en,
             "var": is_inst_var
         })
         
         # 画面に追加
-        row.pack(fill="x", pady=2)
+        row_container.pack(fill="x", pady=2)
         
         if refresh:
             self.refresh_track_list()
 
     def move_track(self, row_widget, direction):
         """トラックを移動 (direction: -1=上, 1=下)"""
-        # 現在のインデックスを探す
         idx = -1
         for i, item in enumerate(self.track_entries):
             if item["row"] == row_widget:
@@ -307,13 +330,11 @@ class DiscographyApp:
 
         new_idx = idx + direction
         if 0 <= new_idx < len(self.track_entries):
-            # リスト内で入れ替え
             self.track_entries[idx], self.track_entries[new_idx] = self.track_entries[new_idx], self.track_entries[idx]
             self.refresh_track_list()
 
     def delete_track(self, row_widget):
         """トラックを削除"""
-        # インデックスを探す
         idx = -1
         for i, item in enumerate(self.track_entries):
             if item["row"] == row_widget:
@@ -321,20 +342,14 @@ class DiscographyApp:
                 break
         
         if idx != -1:
-            # ウィジェットを破棄
             self.track_entries[idx]["row"].destroy()
-            # リストから削除
             self.track_entries.pop(idx)
             self.refresh_track_list()
 
     def refresh_track_list(self):
         """リストの並び順と番号をUIに反映"""
         for i, item in enumerate(self.track_entries):
-            # 番号更新
             item["label"].config(text=f"{i+1}.")
-            # 再配置 (pack順序をリスト順にするため、一度forgetしてからpackし直すのが確実だが、
-            # ちらつき防止のため、順番が違っている場合のみ再packする方法もある。
-            # ここではシンプルに一度forgetして再描画する)
             item["row"].pack_forget()
             item["row"].pack(fill="x", pady=2)
 
@@ -351,10 +366,15 @@ class DiscographyApp:
     def get_current_data(self):
         tracks = []
         for item in self.track_entries:
-            val = item["entry"].get().strip()
+            val_jp = item["entry_jp"].get().strip()
+            val_en = item["entry_en"].get().strip()
             is_inst = item["var"].get()
-            if val:
-                tracks.append({"name": val, "is_inst": is_inst})
+            if val_jp or val_en: 
+                tracks.append({
+                    "name": val_jp, 
+                    "name_en": val_en,
+                    "is_inst": is_inst
+                })
                 
         return {
             "year": self.year_var.get().strip(),
@@ -397,10 +417,10 @@ class DiscographyApp:
         
         raw_tracks = data.get('tracks', [])
         for i, t in enumerate(raw_tracks):
-            # 最後の要素以外はrefresh=Falseで高速化、最後だけTrue
             is_last = (i == len(raw_tracks) - 1)
-            self.add_track(t['name'], t['is_inst'], refresh=is_last)
-        if not raw_tracks: # 空の場合念のため
+            name_en = t.get('name_en', '')
+            self.add_track(t['name'], name_en, t['is_inst'], refresh=is_last)
+        if not raw_tracks:
             self.add_track()
 
     def load_from_txt(self, file_path):
@@ -428,12 +448,24 @@ class DiscographyApp:
             if not line or line.startswith("<div"): break
             track_match = re.match(r'^\d+\.(.*)$', line)
             if track_match:
-                raw_name = track_match.group(1)
+                full_name_str = track_match.group(1)
                 is_inst = False
-                if raw_name.endswith("(Inst)"):
-                    raw_name = raw_name[:-6]
+                
+                # Instチェック
+                if full_name_str.endswith("(Inst)"):
+                    full_name_str = full_name_str[:-6]
                     is_inst = True
-                tracks_data.append((raw_name, is_inst))
+                
+                # 日本語/英語 の分離
+                if '/' in full_name_str:
+                    parts = full_name_str.split('/', 1)
+                    name_jp = parts[0]
+                    name_en = parts[1]
+                else:
+                    name_jp = full_name_str
+                    name_en = ""
+
+                tracks_data.append((name_jp, name_en, is_inst))
 
         self.year_var.set(y)
         self.month_var.set(m)
@@ -446,9 +478,9 @@ class DiscographyApp:
         self.title_entry.insert(0, title_str)
         self.clear_tracks()
         
-        for i, (name, inst) in enumerate(tracks_data):
+        for i, (jp, en, inst) in enumerate(tracks_data):
             is_last = (i == len(tracks_data) - 1)
-            self.add_track(name, inst, refresh=is_last)
+            self.add_track(jp, en, inst, refresh=is_last)
         if not tracks_data:
             self.add_track()
 
@@ -481,9 +513,17 @@ class DiscographyApp:
         
         formatted_tracks = []
         for i, t in enumerate(data['tracks'], 1):
-            name = t['name']
-            if t['is_inst']: name += "(Inst)"
-            formatted_tracks.append(f"{i}.{name}")
+            name_jp = t['name']
+            name_en = t['name_en']
+            
+            # 日本語/英語 のフォーマット作成
+            if name_en:
+                full_name = f"{name_jp}/{name_en}"
+            else:
+                full_name = name_jp
+                
+            if t['is_inst']: full_name += "(Inst)"
+            formatted_tracks.append(f"{i}.{full_name}")
 
         text_output = "\n".join([
             f"{date_str}",
