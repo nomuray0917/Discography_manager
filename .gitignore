@@ -1,0 +1,10 @@
+# PyInstaller のビルド用一時ファイル
+build/
+dist/
+*.spec
+
+# Python のキャッシュ
+__pycache__/
+
+# 実行ファイル本体 (もしdist外に生成した場合)
+*.exe
